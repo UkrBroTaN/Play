@@ -12,22 +12,26 @@
         audio { width: 100%; max-width: 400px; margin-top: 20px; }
         input[type="file"] { margin: 20px 0; }
         button { padding: 10px 20px; cursor: pointer; }
+        #error-message { color: red; margin-top: 10px; }
     </style>
 </head>
 <body>
     <h1>🎵 Мій музичний плеєр</h1>
 
-    <input type="file" id="file-input" accept="audio/*" multiple>
+    <input type="file" id="file-input" accept="audio/*" multiple capture>
     <button id="clear-tracks">🗑️ Очистити треки</button>
     <ul id="track-list"></ul>
 
     <audio id="audio-player" controls></audio>
+
+    <p id="error-message"></p>
 
     <script>
         const fileInput = document.getElementById('file-input');
         const trackList = document.getElementById('track-list');
         const audioPlayer = document.getElementById('audio-player');
         const clearButton = document.getElementById('clear-tracks');
+        const errorMessage = document.getElementById('error-message');
 
         let tracks = [];
         let currentTrackIndex = 0;
@@ -43,6 +47,14 @@
 
         fileInput.addEventListener('change', (event) => {
             const files = Array.from(event.target.files);
+
+            if (!files.length) {
+                errorMessage.textContent = '⚠️ Не вдалося вибрати файл. Спробуй інший браузер.';
+                return;
+            } else {
+                errorMessage.textContent = '';
+            }
+
             files.forEach(file => {
                 const reader = new FileReader();
                 reader.onload = (e) => {
