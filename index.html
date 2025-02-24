@@ -18,6 +18,7 @@
     <h1>🎵 Мій музичний плеєр</h1>
 
     <input type="file" id="file-input" accept="audio/*" multiple>
+    <button id="clear-tracks">🗑️ Очистити треки</button>
     <ul id="track-list"></ul>
 
     <audio id="audio-player" controls></audio>
@@ -26,23 +27,31 @@
         const fileInput = document.getElementById('file-input');
         const trackList = document.getElementById('track-list');
         const audioPlayer = document.getElementById('audio-player');
+        const clearButton = document.getElementById('clear-tracks');
 
         let tracks = [];
         let currentTrackIndex = 0;
 
+        // Завантаження треків з LocalStorage при старті
+        window.onload = () => {
+            const savedTracks = JSON.parse(localStorage.getItem('savedTracks')) || [];
+            if (savedTracks.length > 0) {
+                tracks = savedTracks;
+                renderTrackList();
+            }
+        };
+
         fileInput.addEventListener('change', (event) => {
-            tracks = Array.from(event.target.files);
-            trackList.innerHTML = '';
-
-            tracks.forEach((track, index) => {
-                const listItem = document.createElement('li');
-                listItem.textContent = track.name;
-                listItem.style.cursor = 'pointer';
-                listItem.addEventListener('click', () => playTrack(index));
-                trackList.appendChild(listItem);
+            const files = Array.from(event.target.files);
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    tracks.push({ name: file.name, data: e.target.result });
+                    saveTracks();
+                    renderTrackList();
+                };
+                reader.readAsDataURL(file);
             });
-
-            if (tracks.length > 0) playTrack(0);
         });
 
         audioPlayer.addEventListener('ended', () => {
@@ -52,13 +61,34 @@
             }
         });
 
+        clearButton.addEventListener('click', () => {
+            localStorage.removeItem('savedTracks');
+            tracks = [];
+            renderTrackList();
+            audioPlayer.src = '';
+        });
+
+        function renderTrackList() {
+            trackList.innerHTML = '';
+            tracks.forEach((track, index) => {
+                const listItem = document.createElement('li');
+                listItem.textContent = track.name;
+                listItem.style.cursor = 'pointer';
+                listItem.addEventListener('click', () => playTrack(index));
+                trackList.appendChild(listItem);
+            });
+            if (tracks.length > 0) playTrack(0);
+        }
+
         function playTrack(index) {
             currentTrackIndex = index;
-            const track = tracks[index];
-            audioPlayer.src = URL.createObjectURL(track);
+            audioPlayer.src = tracks[index].data;
             audioPlayer.play();
+        }
+
+        function saveTracks() {
+            localStorage.setItem('savedTracks', JSON.stringify(tracks));
         }
     </script>
 </body>
 </html>
-
