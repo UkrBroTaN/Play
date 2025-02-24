@@ -18,7 +18,7 @@
 <body>
     <h1>🎵 Мій музичний плеєр</h1>
 
-    <input type="file" id="file-input" accept="audio/*" multiple capture>
+    <input type="file" id="file-input" accept="audio/*" multiple>
     <button id="clear-tracks">🗑️ Очистити треки</button>
     <ul id="track-list"></ul>
 
@@ -45,11 +45,16 @@
             }
         };
 
+        fileInput.addEventListener('click', () => {
+            // Для iOS: перезавантажуємо input для повторного вибору файлу
+            fileInput.value = '';
+        });
+
         fileInput.addEventListener('change', (event) => {
             const files = Array.from(event.target.files);
 
             if (!files.length) {
-                errorMessage.textContent = '⚠️ Не вдалося вибрати файл. Спробуй інший браузер.';
+                errorMessage.textContent = '⚠️ Не вдалося вибрати файл. Спробуй інший браузер або перевір налаштування.';
                 return;
             } else {
                 errorMessage.textContent = '';
