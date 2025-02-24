@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мій музичний плеєр</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f0f0f0; }
+        h1 { color: #333; }
+        #track-list { list-style: none; padding: 0; }
+        #track-list li { margin: 5px 0; }
+        audio { width: 100%; max-width: 400px; margin-top: 20px; }
+        input[type="file"] { margin: 20px 0; }
+        button { padding: 10px 20px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🎵 Мій музичний плеєр</h1>
+
+    <input type="file" id="file-input" accept="audio/*" multiple>
+    <ul id="track-list"></ul>
+
+    <audio id="audio-player" controls></audio>
+
+    <script>
+        const fileInput = document.getElementById('file-input');
+        const trackList = document.getElementById('track-list');
+        const audioPlayer = document.getElementById('audio-player');
+
+        let tracks = [];
+        let currentTrackIndex = 0;
+
+        fileInput.addEventListener('change', (event) => {
+            tracks = Array.from(event.target.files);
+            trackList.innerHTML = '';
+
+            tracks.forEach((track, index) => {
+                const listItem = document.createElement('li');
+                listItem.textContent = track.name;
+                listItem.style.cursor = 'pointer';
+                listItem.addEventListener('click', () => playTrack(index));
+                trackList.appendChild(listItem);
+            });
+
+            if (tracks.length > 0) playTrack(0);
+        });
+
+        audioPlayer.addEventListener('ended', () => {
+            currentTrackIndex++;
+            if (currentTrackIndex < tracks.length) {
+                playTrack(currentTrackIndex);
+            }
+        });
+
+        function playTrack(index) {
+            currentTrackIndex = index;
+            const track = tracks[index];
+            audioPlayer.src = URL.createObjectURL(track);
+            audioPlayer.play();
+        }
+    </script>
+</body>
+</html>
+
