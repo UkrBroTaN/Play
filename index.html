@@ -3,108 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мій музичний плеєр</title>
+    <title>Офлайн Музичний Плеєр</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f0f0f0; }
-        h1 { color: #333; }
-        #track-list { list-style: none; padding: 0; }
-        #track-list li { margin: 5px 0; }
-        audio { width: 100%; max-width: 400px; margin-top: 20px; }
-        input[type="file"] { margin: 20px 0; }
-        button { padding: 10px 20px; cursor: pointer; }
-        #error-message { color: red; margin-top: 10px; }
+        body { font-family: Arial, sans-serif; text-align: center; }
+        #playlist { margin-top: 20px; }
+        .track { cursor: pointer; margin: 5px 0; }
     </style>
 </head>
 <body>
-    <h1>🎵 Мій музичний плеєр</h1>
-
-    <input type="file" id="file-input" accept="audio/*" multiple>
-    <button id="clear-tracks">🗑️ Очистити треки</button>
-    <ul id="track-list"></ul>
-
-    <audio id="audio-player" controls></audio>
-
-    <p id="error-message"></p>
+    <h1>Офлайн Музичний Плеєр</h1>
+    <input type="file" id="fileInput" accept="audio/*" multiple>
+    <button onclick="clearTracks()">Очистити</button>
+    <ul id="playlist"></ul>
+    <audio id="audioPlayer" controls></audio>
 
     <script>
-        const fileInput = document.getElementById('file-input');
-        const trackList = document.getElementById('track-list');
-        const audioPlayer = document.getElementById('audio-player');
-        const clearButton = document.getElementById('clear-tracks');
-        const errorMessage = document.getElementById('error-message');
-
         let tracks = [];
-        let currentTrackIndex = 0;
+        const audioPlayer = document.getElementById("audioPlayer");
+        const playlist = document.getElementById("playlist");
 
-        // Завантаження треків з LocalStorage при старті
-        window.onload = () => {
-            const savedTracks = JSON.parse(localStorage.getItem('savedTracks')) || [];
-            if (savedTracks.length > 0) {
-                tracks = savedTracks;
-                renderTrackList();
+        const dbRequest = indexedDB.open("MusicDB", 1);
+        dbRequest.onupgradeneeded = function(event) {
+            let db = event.target.result;
+            if (!db.objectStoreNames.contains("tracks")) {
+                db.createObjectStore("tracks", { keyPath: "name" });
             }
         };
 
-        fileInput.addEventListener('click', () => {
-            // Для iOS: перезавантажуємо input для повторного вибору файлу
-            fileInput.value = '';
+        dbRequest.onsuccess = function(event) {
+            let db = event.target.result;
+            loadTracks(db);
+        };
+
+        document.getElementById("fileInput").addEventListener("change", function(event) {
+            const files = event.target.files;
+            const dbRequest = indexedDB.open("MusicDB", 1);
+            
+            dbRequest.onsuccess = function(event) {
+                let db = event.target.result;
+                let transaction = db.transaction("tracks", "readwrite");
+                let store = transaction.objectStore("tracks");
+                
+                for (let file of files) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        let track = { name: file.name, data: e.target.result };
+                        store.put(track);
+                        tracks.push(track);
+                        updatePlaylist();
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
         });
 
-        fileInput.addEventListener('change', (event) => {
-            const files = Array.from(event.target.files);
-
-            if (!files.length) {
-                errorMessage.textContent = '⚠️ Не вдалося вибрати файл. Спробуй інший браузер або перевір налаштування.';
-                return;
-            } else {
-                errorMessage.textContent = '';
-            }
-
-            files.forEach(file => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    tracks.push({ name: file.name, data: e.target.result });
-                    saveTracks();
-                    renderTrackList();
-                };
-                reader.readAsDataURL(file);
-            });
-        });
-
-        audioPlayer.addEventListener('ended', () => {
-            currentTrackIndex++;
-            if (currentTrackIndex < tracks.length) {
-                playTrack(currentTrackIndex);
-            }
-        });
-
-        clearButton.addEventListener('click', () => {
-            localStorage.removeItem('savedTracks');
-            tracks = [];
-            renderTrackList();
-            audioPlayer.src = '';
-        });
-
-        function renderTrackList() {
-            trackList.innerHTML = '';
+        function updatePlaylist() {
+            playlist.innerHTML = "";
             tracks.forEach((track, index) => {
-                const listItem = document.createElement('li');
-                listItem.textContent = track.name;
-                listItem.style.cursor = 'pointer';
-                listItem.addEventListener('click', () => playTrack(index));
-                trackList.appendChild(listItem);
+                const li = document.createElement("li");
+                li.textContent = track.name;
+                li.classList.add("track");
+                li.onclick = () => playTrack(index);
+                playlist.appendChild(li);
             });
-            if (tracks.length > 0) playTrack(0);
         }
 
         function playTrack(index) {
-            currentTrackIndex = index;
-            audioPlayer.src = tracks[index].data;
-            audioPlayer.play();
+            if (tracks.length > 0) {
+                audioPlayer.src = tracks[index].data;
+                audioPlayer.play();
+                audioPlayer.onended = () => playTrack((index + 1) % tracks.length);
+            }
         }
 
-        function saveTracks() {
-            localStorage.setItem('savedTracks', JSON.stringify(tracks));
+        function loadTracks(db) {
+            let transaction = db.transaction("tracks", "readonly");
+            let store = transaction.objectStore("tracks");
+            let request = store.getAll();
+            
+            request.onsuccess = function() {
+                tracks = request.result;
+                updatePlaylist();
+            };
+        }
+
+        function clearTracks() {
+            const dbRequest = indexedDB.open("MusicDB", 1);
+            dbRequest.onsuccess = function(event) {
+                let db = event.target.result;
+                let transaction = db.transaction("tracks", "readwrite");
+                let store = transaction.objectStore("tracks");
+                store.clear();
+            };
+            tracks = [];
+            updatePlaylist();
         }
     </script>
 </body>
